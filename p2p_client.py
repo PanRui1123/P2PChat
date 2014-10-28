@@ -7,12 +7,74 @@ import Tkinter
 root_window = 0
 username = 0
 passwd = 0
+name_addr_dic = {}
+name_socket_dic = {}
+locationServerAddr = (123,456)
+
 
 __author__ = {	'name':'Rui Pan',
-				'email':'joshuapanrui@live.cn',
-				'phone':'13684027112',
-				'stunum':'201421060430'}
+'email':'joshuapanrui@live.cn',
+'phone':'13684027112',
+'stunum':'201421060430'}
 
+class CReceiver(threading.Thread):
+	def __init__(self, Socket, ChatBoard, chatWndow, Remotename):
+		self.m_socket = Socket
+		self.m_chatboard = ChatBoard
+		self.m_remote = Remotename
+		self.chatwindow = chatWndow
+
+	def run(self):
+		while not self.thread_stop:
+			recv_msg = self.m_socket.recv(1024)
+			if recv_msg == "":
+				print 'remote is closed'
+
+				self.chatwindow.destroy()
+				name_socket_dic[remote].close()
+				name_socket_dic[remote] = None
+				self.stop()
+			else:
+				self.m_chatboard.insert(Tkinter.CURRENT,self.m_remote + time.strftime(' %m-%d-%H %I:%M:%S\n',time.localtime(time.time())), 'blue')
+				self.m_chatboard.insert(Tkinter.CURRENT,recv_msg)				
+
+class CListener(threading.Thread):
+	def __init__(self):
+		self.m_socket = socket.socket(AF_INET, SOCK_STREAM)
+		self.default_port = 8888
+		while True:
+			try:
+				self.m_socket.bind(("",self.default_port))
+				break;
+			except Exception,e:
+				self.default_port += 1
+		self.m_socket.listen(10)
+
+	def getaddr():
+		return (gethostname(),self.default_port)
+
+	def run(self):
+		global root_window
+		global name_addr_dic
+		while(True):
+			(conn_socket,addr) = self.m_socket.accept()
+			
+			if addr == locationServerAddr:
+				#update table
+				continue
+
+			remotename = ''
+			for k in name_addr_dic.keys():
+				if name_addr_dic[k] == addr:
+					remotename = k
+					break
+
+			create_chat_window(remotename)
+
+
+
+def on_error(msg):
+	print msg
 
 def on_log_up_action(regname , regpasswd):
 
@@ -47,16 +109,33 @@ def on_exit():
 	print 'exit'
 	login_window.destroy()
 
-def sendmessage(text_msg, chatboard):
+def sendmessage(text_msg, chatboard, remote):
 	global username
+	global name_socket_dic
 	msg = text_msg.get('1.0',Tkinter.END)
 	text_msg.delete(0.0, Tkinter.END)	
 	print 'send',msg
 	chatboard.insert(Tkinter.CURRENT,username.get() + time.strftime(' %m-%d-%H %I:%M:%S\n',time.localtime(time.time())), 'green')
 	chatboard.insert(Tkinter.CURRENT,msg)
 
+	socket = name_socket_dic[remote]
+	socket.send(msg)
+
 def on_chat(lb,event):
+	global root_window
+
 	remote = lb.get(lb.curselection()) 
+	conn = socket.socket(AF_INET, SOCK_STREAM)
+	conn.connect(name_addr_dic(remote))
+	name_socket_dic[remote] = conn
+
+	return create_chat_window(remote)
+
+def create_chat_window(remote):
+
+	global root_window
+	global name_socket_dic
+
 	chat_window = Tkinter.Toplevel(root_window)
 	chat_window.title(' chatting with '+ remote)
 
@@ -69,7 +148,7 @@ def on_chat(lb,event):
 	text_msglist.bind("<KeyPress>", lambda e : "break")	
 
 	text_msg = Tkinter.Text(frame_left_center);
-	button_sendmsg = Tkinter.Button(frame_left_bottom, text='send',command= lambda: sendmessage(text_msg, text_msglist))	
+	button_sendmsg = Tkinter.Button(frame_left_bottom, text='send',command= lambda: sendmessage(text_msg, text_msglist, remote))	
 	text_msglist.tag_config('green', foreground='#00B800')
 	text_msglist.tag_config('blue', foreground='blue')
 	
@@ -85,6 +164,10 @@ def on_chat(lb,event):
 	text_msg.grid()
 	button_sendmsg.grid(sticky=Tkinter.E)
 
+	receiver = CReceiver(name_socket_dic[remote], text_msglist, chat_window, remote)
+	receiver.start()
+
+	return chat_window
 
 def on_log_in(login_window, event = None):
 	global root_window
@@ -92,7 +175,12 @@ def on_log_in(login_window, event = None):
 	global passwd	
 
 	print username.get(),passwd.get()
-	friends = ['jack','pony','robin','pan','bill','jobs']
+
+	listener = CListener()
+	myaddr = listener.getaddr()
+	RegistToLocationServer(myaddr)
+
+	friends = name_addr_dic.keys()
 
 	lb = Tkinter.Listbox(root_window,selectmode = Tkinter.EXTENDED)
 	for i in range(len(friends)):
@@ -100,12 +188,16 @@ def on_log_in(login_window, event = None):
 
 	lb.bind('<Double-Button-1>',lambda event: on_chat(lb,event))
 
-
 	lb.pack(side = Tkinter.LEFT)
 	root_window.attributes("-alpha",1)
 	root_window.attributes("-topmost",1)	
 
 	login_window.destroy()	
+
+	listener.start()
+
+def RegistToLocationServer(myaddr):
+	#regist to location server
 
 def main():
 	global root_window
