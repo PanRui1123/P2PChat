@@ -19,6 +19,7 @@ __author__ = {	'name':'Rui Pan',
 
 class CReceiver(threading.Thread):
 	def __init__(self, Socket, ChatBoard, chatWndow, Remotename):
+		threading.Thread.__init__(self)
 		self.m_socket = Socket
 		self.m_chatboard = ChatBoard
 		self.m_remote = Remotename
@@ -40,7 +41,8 @@ class CReceiver(threading.Thread):
 
 class CListener(threading.Thread):
 	def __init__(self):
-		self.m_socket = socket.socket(AF_INET, SOCK_STREAM)
+		threading.Thread.__init__(self)
+		self.m_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 		self.default_port = 8888
 		while True:
 			try:
@@ -50,8 +52,8 @@ class CListener(threading.Thread):
 				self.default_port += 1
 		self.m_socket.listen(10)
 
-	def getaddr():
-		return (gethostname(),self.default_port)
+	def getaddr(self):
+		return (socket.gethostname(),self.default_port)
 
 	def run(self):
 		global root_window
@@ -198,6 +200,7 @@ def on_log_in(login_window, event = None):
 
 def RegistToLocationServer(myaddr):
 	#regist to location server
+	pass
 
 def main():
 	global root_window
