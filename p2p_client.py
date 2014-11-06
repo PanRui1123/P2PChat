@@ -3,19 +3,25 @@ import sys
 import socket
 import time
 import Tkinter
+import json
 
 root_window = 0
 username = 0
 passwd = 0
 name_addr_dic = {}
 name_socket_dic = {}
-locationServerAddr = (123,456)
+locationServerAddr = ('localhost',9026)
 
 
 __author__ = {	'name':'Rui Pan',
 'email':'joshuapanrui@live.cn',
-'phone':'13684027112',
-'stunum':'201421060430'}
+}
+
+
+create_name = 0
+chat_remote = 0
+chat_msg = 0
+chat_board = 0
 
 class CReceiver(threading.Thread):
 	def __init__(self, Socket, ChatBoard, chatWndow, Remotename):
@@ -24,9 +30,18 @@ class CReceiver(threading.Thread):
 		self.m_chatboard = ChatBoard
 		self.m_remote = Remotename
 		self.chatwindow = chatWndow
+		self.thread_stop = False;
 
 	def run(self):
+		global name_socket_dic
+		global root_window
+
+		global chat_board
+		global chat_remote
+		global chat_msg
+
 		while not self.thread_stop:
+			print "start recving"
 			recv_msg = self.m_socket.recv(1024)
 			if recv_msg == "":
 				print 'remote is closed'
@@ -36,9 +51,33 @@ class CReceiver(threading.Thread):
 				name_socket_dic[remote] = None
 				self.stop()
 			else:
-				self.m_chatboard.insert(Tkinter.CURRENT,self.m_remote + time.strftime(' %m-%d-%H %I:%M:%S\n',time.localtime(time.time())), 'blue')
-				self.m_chatboard.insert(Tkinter.CURRENT,recv_msg)				
 
+				print "recvmsg:",recv_msg
+				chat_board = self.m_chatboard
+				chat_remote = self.m_remote
+				chat_msg = recv_msg
+
+				print chat_board
+				print chat_remote
+				print chat_msg
+
+				root_window.event_generate("<<UpdateChatBoard>>",when = "tail")	
+	def stop(self):
+		self.thread_stop = True;
+
+def on_update_chat_board(event):
+	global chat_board
+	global chat_remote
+	global chat_msg
+
+	print chat_board
+	print chat_remote
+	print chat_msg
+
+	if chat_board != 0:
+		chat_board.insert(Tkinter.END,chat_remote + time.strftime(' %m-%d-%H %I:%M:%S\n',time.localtime(time.time())), 'blue')
+		chat_board.insert(Tkinter.END,chat_msg)	
+		
 class CListener(threading.Thread):
 	def __init__(self):
 		threading.Thread.__init__(self)
@@ -53,26 +92,48 @@ class CListener(threading.Thread):
 		self.m_socket.listen(10)
 
 	def getaddr(self):
-		return (socket.gethostname(),self.default_port)
+		return (socket.gethostbyname(socket.gethostname()),self.default_port)
 
 	def run(self):
 		global root_window
 		global name_addr_dic
+		global create_name
 		while(True):
 			(conn_socket,addr) = self.m_socket.accept()
-			
-			if addr == locationServerAddr:
-				#update table
-				continue
 
-			remotename = ''
-			for k in name_addr_dic.keys():
-				if name_addr_dic[k] == addr:
-					remotename = k
-					break
+			remotename = conn_socket.recv(1024).strip()
 
-			create_chat_window(remotename)
+			print "remotename :",remotename
+			name_socket_dic[remotename] = conn_socket
+			create_name = remotename
 
+			root_window.event_generate("<<CreateChatWindow>>",when = "tail")
+
+def on_create_chat_window(event):
+	global create_name	
+	create_chat_window(create_name)
+
+def on_query(cmd , address = 0):
+
+	global username
+	global name_addr_dic
+
+	fd = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+	fd.connect(locationServerAddr)
+	info = [cmd]
+	if address == 0:
+		info = info + [username.get()]
+	else: info = info + [username.get()] + [address]
+
+	toSend = json.dumps(info);
+
+	fd.send(toSend)
+	recved = json.loads(fd.recv(1024).strip())
+
+	name_addr_dic = recved
+	print 'recv:',name_addr_dic
+
+	fd.close()
 
 
 def on_error(msg):
@@ -117,19 +178,24 @@ def sendmessage(text_msg, chatboard, remote):
 	msg = text_msg.get('1.0',Tkinter.END)
 	text_msg.delete(0.0, Tkinter.END)	
 	print 'send',msg
-	chatboard.insert(Tkinter.CURRENT,username.get() + time.strftime(' %m-%d-%H %I:%M:%S\n',time.localtime(time.time())), 'green')
-	chatboard.insert(Tkinter.CURRENT,msg)
+	chatboard.insert(Tkinter.END,username.get() + time.strftime(' %m-%d-%H %I:%M:%S\n',time.localtime(time.time())), 'green')
+	chatboard.insert(Tkinter.END,msg)
 
-	socket = name_socket_dic[remote]
-	socket.send(msg)
+	sock = name_socket_dic[remote]
+	print sock
+	sock.send(msg)
 
 def on_chat(lb,event):
 	global root_window
+	global name_socket_dic
+	global username
 
 	remote = lb.get(lb.curselection()) 
-	conn = socket.socket(AF_INET, SOCK_STREAM)
-	conn.connect(name_addr_dic(remote))
+	conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+	conn.connect(tuple(name_addr_dic[remote]))
 	name_socket_dic[remote] = conn
+
+	conn.sendall(username.get())
 
 	return create_chat_window(remote)
 
@@ -140,6 +206,8 @@ def create_chat_window(remote):
 
 	chat_window = Tkinter.Toplevel(root_window)
 	chat_window.title(' chatting with '+ remote)
+
+	print "comes here"
 
 	frame_left_top = Tkinter.Frame(chat_window, width=380, height=270, bg='white')
 	frame_left_center = Tkinter.Frame(chat_window, width=380, height=100, bg='white')
@@ -171,6 +239,18 @@ def create_chat_window(remote):
 
 	return chat_window
 
+def on_update_chat_table(lb,event = None):
+	global name_addr_dic
+	global username
+	on_query("update")
+
+	print name_addr_dic
+	friends = name_addr_dic.keys()
+
+	lb.delete(0,Tkinter.END)
+	for i in range(len(friends)):
+		if friends[i] != username.get():lb.insert(Tkinter.END,friends[i])	
+
 def on_log_in(login_window, event = None):
 	global root_window
 	global username
@@ -182,15 +262,18 @@ def on_log_in(login_window, event = None):
 	myaddr = listener.getaddr()
 	RegistToLocationServer(myaddr)
 
-	friends = name_addr_dic.keys()
-
 	lb = Tkinter.Listbox(root_window,selectmode = Tkinter.EXTENDED)
-	for i in range(len(friends)):
-	    lb.insert(Tkinter.END,friends[i])
 
 	lb.bind('<Double-Button-1>',lambda event: on_chat(lb,event))
 
-	lb.pack(side = Tkinter.LEFT)
+	lb.pack(side = Tkinter.BOTTOM)
+
+	bottonname = Tkinter.StringVar()
+	bottonname.set('Update')
+	confilm_button = Tkinter.Button(root_window, textvariable = bottonname, command =lambda: on_update_chat_table(lb))
+	confilm_button.pack(side = Tkinter.BOTTOM)
+
+
 	root_window.attributes("-alpha",1)
 	root_window.attributes("-topmost",1)	
 
@@ -200,6 +283,7 @@ def on_log_in(login_window, event = None):
 
 def RegistToLocationServer(myaddr):
 	#regist to location server
+	on_query("add",myaddr)
 	pass
 
 def main():
@@ -210,7 +294,13 @@ def main():
 	root_window = Tkinter.Tk()
 	root_window.attributes("-alpha",0)
 	root_window.title('P2PChat contacts')
-	root_window.geometry('200x400')
+	root_window.geometry('200x250')
+
+	root_window.event_add("<<CreateChatWindow>>","<F1>")
+	root_window.event_add("<<UpdateChatBoard>>","<F2>")
+	root_window.bind("<<CreateChatWindow>>",lambda event:on_create_chat_window(event))
+	root_window.bind("<<UpdateChatBoard>>",lambda event: on_update_chat_board(event))
+
 	login_window = Tkinter.Toplevel(root_window)
 	login_window.title('P2PChat Login')
 	login_window.geometry('400x150')
@@ -251,3 +341,4 @@ def main():
 
 if __name__ == '__main__':
 	main()
+	on_query("del")
