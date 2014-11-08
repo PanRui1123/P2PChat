@@ -2,7 +2,6 @@
 # coding: utf-8
 
 import json
-import traceback
 import SocketServer
 
 __author__ = {
@@ -11,41 +10,36 @@ __author__ = {
 }
 
 
-g_active_user = {}
 
 class LocationHandler(SocketServer.BaseRequestHandler):
-    m_bufSize = 1024
+    _BUF_SIZE = 1024
 
     def handle(self):
-        global g_active_user
-        while True:
-            try:
+        users = self.server.active_users
 
-                user_cmd = json.loads(self.request.recv(LocationHandler.m_bufSize).strip())
+        data = self.request.recv(LocationHandler._BUF_SIZE)
+        user_cmd = json.loads(data.strip())
 
-                if user_cmd[0] == 'add':
-                    g_active_user[user_cmd[1]] = user_cmd[2]
-                elif user_cmd[0] == 'del':
-                    del g_active_user[user_cmd[1]]
-                else:
-                    pass
+        #print("# server recv: %s" % user_cmd)
 
-                toSend = json.dumps(g_active_user)
-                self.request.sendall(toSend)
+        if user_cmd[0] == 'add':
+            users[user_cmd[1]] = user_cmd[2]
+        elif user_cmd[0] == 'del' and users.has_key(user_cmd[1]):
+            del users[user_cmd[1]]
+        else:
+            pass
 
-                self.request.close()
+        self.request.sendall(json.dumps(users))
 
-                break
-            except:
-
-                traceback.print_exc()
-                break
-
+class LocationServer(SocketServer.ThreadingMixIn, SocketServer.TCPServer):
+    def __init__(self, server_address):
+        SocketServer.TCPServer.__init__(self, server_address, LocationHandler)
+        self.active_users = {}
 
 def main():
     addr = ("",9026)
 
-    server = SocketServer.TCPServer(addr, LocationHandler)
+    server = LocationServer(addr)
     server.serve_forever()
 
 if __name__ == '__main__':
