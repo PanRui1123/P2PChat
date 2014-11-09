@@ -217,7 +217,7 @@ def create_chat_window(remote):
 
     frame_left_top = Tkinter.Frame(chat_window, width=380, height=270, bg='white')
     frame_left_center = Tkinter.Frame(chat_window, width=380, height=100, bg='white')
-    frame_left_bottom = Tkinter.Frame(chat_window, width=380, height=20)
+    frame_left_bottom = Tkinter.Frame(chat_window, width=380, height=30)
     frame_right = Tkinter.Frame(chat_window, width=170, height=400, bg='white')
 
     text_msglist = Tkinter.Text(frame_left_top)
