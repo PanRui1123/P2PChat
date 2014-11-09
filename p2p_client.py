@@ -7,6 +7,8 @@ import socket
 import time
 import Tkinter
 import json
+import ttk
+import Tkinter as tk
 
 root_window = 0
 username = 0
@@ -143,12 +145,12 @@ def on_query(cmd , address = 0):
 def on_error(msg):
     print msg
 
-def on_log_up_action(regname , regpasswd):
+def on_sign_up_action(regname , regpasswd):
 
 
     print regname.get(),regpasswd.get()
 
-def on_log_up(root):
+def on_sign_up(root):
     print 'log up'
     cWinLogUp = Tkinter.Toplevel(root)
     cWinLogUp.title('Log up')
@@ -162,14 +164,14 @@ def on_log_up(root):
     input_name = Tkinter.Entry( cWinLogUp, textvariable = regname, width=40)
     input_key = Tkinter.Entry( cWinLogUp, textvariable = regpasswd, width=40)
 
-    input_key.bind("<Return>", lambda: on_log_up_action(regname, regpasswd))
+    input_key.bind("<Return>", lambda: on_sign_up_action(regname, regpasswd))
     input_name.pack(pady = 20, side = Tkinter.TOP)
     input_key.pack(pady = 0, side = Tkinter.TOP)
 
     bottonname_2 = Tkinter.StringVar()
     bottonname_2.set('Regist')
-    confilm_button_2 = Tkinter.Button(cWinLogUp, textvariable = bottonname_2, command =lambda: on_log_up_action(regname, regpasswd))
-    confilm_button_2.pack()
+    signup_btn = Tkinter.Button(cWinLogUp, textvariable = bottonname_2, command =lambda: on_sign_up_action(regname, regpasswd))
+    signup_btn.pack()
 
 
 def on_exit():
@@ -274,8 +276,8 @@ def on_log_in(login_window, event = None):
 
     bottonname = Tkinter.StringVar()
     bottonname.set('Update')
-    confilm_button = Tkinter.Button(root_window, textvariable = bottonname, command =lambda: on_update_chat_table(lb))
-    confilm_button.pack(side = Tkinter.BOTTOM)
+    update_btn = Tkinter.Button(root_window, textvariable = bottonname, command =lambda: on_update_chat_table(lb))
+    update_btn.pack(side = Tkinter.BOTTOM)
 
 
     root_window.attributes("-alpha",1)
@@ -295,50 +297,56 @@ def main():
     global username
     global passwd
 
-    root_window = Tkinter.Tk()
+    root_window = tk.Tk()
     root_window.attributes("-alpha",0)
     root_window.title('P2PChat contacts')
     root_window.geometry('200x250')
 
-    root_window.event_add("<<CreateChatWindow>>","<F1>")
-    root_window.event_add("<<UpdateChatBoard>>","<F2>")
-    root_window.bind("<<CreateChatWindow>>",lambda event:on_create_chat_window(event))
-    root_window.bind("<<UpdateChatBoard>>",lambda event: on_update_chat_board(event))
+    root_window.event_add("<<CreateChatWindow>>", "<F1>")
+    root_window.event_add("<<UpdateChatBoard>>", "<F2>")
+    root_window.bind("<<CreateChatWindow>>", lambda event: on_create_chat_window(event))
+    root_window.bind("<<UpdateChatBoard>>", lambda event: on_update_chat_board(event))
 
-    login_window = Tkinter.Toplevel(root_window)
+
+    login_window = tk.Toplevel(root_window)
     login_window.title('P2PChat Login')
-    login_window.geometry('400x150')
+    login_window.geometry('200x110')
+    login_window.resizable(width=tk.FALSE, height=tk.FALSE)
 
-    menubar = Tkinter.Menu(login_window)
 
-    log_up = Tkinter.Menu(menubar,tearoff = 0)
-    log_up.add_command(label = 'log up', command =lambda: on_log_up(login_window))
-    log_up.add_command(label = 'Exit', command = on_exit)
-    menubar.add_cascade(label = 'more control',menu = log_up)
-
+    menubar = tk.Menu(login_window)
+    menu = tk.Menu(menubar, tearoff=0)
+    menu.add_command(label='Exit', command=root_window.quit)
+    menubar.add_cascade(label='Menu', menu=menu)
     login_window.config(menu = menubar)
 
-    username = Tkinter.StringVar()
-    passwd = Tkinter.StringVar()
+
+    username = tk.StringVar()
     username.set('username')
-    passwd.set('passwd')
+    username_ent = ttk.Entry(login_window, textvariable = username)
+    username_ent.pack(fill=tk.BOTH,
+                      padx=5,
+                      pady=5,
+                      side=tk.TOP,
+                      expand=1)
 
-    input_name = Tkinter.Entry( login_window, textvariable = username, width=40)
-    input_key = Tkinter.Entry( login_window, textvariable = passwd, width=40)
+    passwd = tk.StringVar()
+    passwd.set('password')
+    passwd_ent = ttk.Entry(login_window, textvariable = passwd)
+    passwd_ent.bind("<Return>", lambda event: on_log_in(login_window,event))
+    passwd_ent.pack(fill=tk.BOTH,
+                    padx=5,
+                    pady=5,
+                    side=tk.TOP,
+                    expand=1)
 
-    input_key.bind("<Return>", lambda event: on_log_in(login_window,event))
-    input_name.pack(pady = 20, side = Tkinter.TOP)
-    input_key.pack(pady = 0, side = Tkinter.TOP)
+    login_btn = ttk.Button(login_window, text='Log in',
+                           command=lambda: on_log_in(login_window))
+    login_btn.pack(fill=tk.X, padx=5, pady=5, side=tk.LEFT, expand=1)
 
-    bottonname = Tkinter.StringVar()
-    bottonname.set('confilm')
-    confilm_button = Tkinter.Button(login_window, textvariable = bottonname, command =lambda: on_log_in(login_window))
-    confilm_button.pack(padx = 100,side = Tkinter.LEFT)
-
-    bottonname_2 = Tkinter.StringVar()
-    bottonname_2.set('Regist')
-    confilm_button_2 = Tkinter.Button(login_window, textvariable = bottonname_2, command =lambda: on_log_up(root = login_window))
-    confilm_button_2.pack(side = Tkinter.LEFT)
+    signup_btn = ttk.Button(login_window, text='Sign up',
+                            command=lambda: on_sign_up(login_window))
+    signup_btn.pack(fill=tk.X, padx=5, pady=5, side=tk.RIGHT, expand=1)
 
 
     root_window.mainloop()
