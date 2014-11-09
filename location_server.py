@@ -4,12 +4,6 @@
 import json
 import SocketServer
 
-__author__ = {
-    'name':'Rui Pan',
-    'email':'joshuapanrui@live.cn',
-}
-
-
 
 class LocationHandler(SocketServer.BaseRequestHandler):
     _BUF_SIZE = 1024

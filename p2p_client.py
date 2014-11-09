@@ -18,11 +18,6 @@ name_socket_dic = {}
 locationServerAddr = ('localhost',9026)
 
 
-__author__ = {
-    'name':'Rui Pan',
-    'email':'joshuapanrui@live.cn',
-}
-
 
 create_name = 0
 chat_remote = 0
