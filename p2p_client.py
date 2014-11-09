@@ -137,7 +137,7 @@ def on_query(cmd , address = 0):
     recved = json.loads(fd.recv(1024).strip())
 
     name_addr_dic = recved
-    print 'recv:',name_addr_dic
+    print('# client recv: %s' % name_addr_dic)
 
     fd.close()
 
@@ -250,7 +250,7 @@ def on_update_chat_table(lb,event = None):
     global username
     on_query("update")
 
-    print name_addr_dic
+    print("# client update friend list: %s" % name_addr_dic)
     friends = name_addr_dic.keys()
 
     lb.delete(0,Tkinter.END)
@@ -262,32 +262,29 @@ def on_log_in(login_window, event = None):
     global username
     global passwd
 
-    print username.get(),passwd.get()
+    print("# client on log in: %s::%s" % (username.get(), passwd.get()))
 
     listener = CListener()
     myaddr = listener.getaddr()
-    RegistToLocationServer(myaddr)
+    notify_location_server(myaddr)
 
-    lb = Tkinter.Listbox(root_window,selectmode = Tkinter.EXTENDED)
-
-    lb.bind('<Double-Button-1>',lambda event: on_chat(lb,event))
-
-    lb.pack(side = Tkinter.BOTTOM)
-
-    bottonname = Tkinter.StringVar()
-    bottonname.set('Update')
-    update_btn = Tkinter.Button(root_window, textvariable = bottonname, command =lambda: on_update_chat_table(lb))
-    update_btn.pack(side = Tkinter.BOTTOM)
+    root_window.deiconify()
+    root_window.attributes("-topmost", 1)
 
 
-    root_window.attributes("-alpha",1)
-    root_window.attributes("-topmost",1)
+    lb = tk.Listbox(root_window, selectmode=Tkinter.EXTENDED)
+    lb.bind('<Double-Button-1>', lambda event: on_chat(lb,event))
+    lb.pack(fill=tk.BOTH, expand=1)
+
+    update_btn = Tkinter.Button(root_window, text='Update',
+            command =lambda: on_update_chat_table(lb))
+    update_btn.pack(fill=tk.X)
 
     login_window.destroy()
 
     listener.start()
 
-def RegistToLocationServer(myaddr):
+def notify_location_server(myaddr):
     #regist to location server
     on_query("add",myaddr)
     pass
@@ -298,9 +295,9 @@ def main():
     global passwd
 
     root_window = tk.Tk()
-    root_window.attributes("-alpha",0)
     root_window.title('P2PChat contacts')
     root_window.geometry('200x250')
+    root_window.withdraw()
 
     root_window.event_add("<<CreateChatWindow>>", "<F1>")
     root_window.event_add("<<UpdateChatBoard>>", "<F2>")
@@ -312,6 +309,7 @@ def main():
     login_window.title('P2PChat Login')
     login_window.geometry('200x110')
     login_window.resizable(width=tk.FALSE, height=tk.FALSE)
+    login_window.protocol('WM_DELETE_WINDOW', root_window.quit)
 
 
     menubar = tk.Menu(login_window)
